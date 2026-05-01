@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0b0f19">
+    <title>JMF BOT | الاتصال السحابي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b0f19;
+            --panel: #151a28;
+            --primary: #00d4ff;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(0, 212, 255, 0.2);
+        }
+        * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
+        body { 
+            margin: 0; padding: 0; background: var(--bg); color: var(--text-main); 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh;
+        }
+        .container {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 30px 20px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 20px rgba(0, 212, 255, 0.1);
+        }
+        .logo-box {
+            width: 80px; height: 80px; background: rgba(0, 212, 255, 0.1); border-radius: 20px;
+            display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto;
+            border: 1px solid var(--border); box-shadow: inset 0 0 15px rgba(0, 212, 255, 0.2);
+        }
+        .logo-box svg { width: 40px; height: 40px; color: var(--primary); }
+        h1 { font-size: 22px; margin: 0 0 10px 0; color: #fff; font-weight: 800; }
+        p { font-size: 13px; color: var(--text-muted); margin: 0 0 25px 0; line-height: 1.6; }
+        
+        .input-group { margin-bottom: 20px; text-align: right; }
+        .input-group label { display: block; font-size: 12px; font-weight: bold; color: var(--primary); margin-bottom: 8px; }
+        .input-group input {
+            width: 100%; background: rgba(0,0,0,0.4); border: 1px solid #334155; color: #fff;
+            padding: 15px; border-radius: 12px; font-size: 16px; font-weight: bold; text-align: center; outline: none; transition: 0.3s;
+        }
+        .input-group input:focus { border-color: var(--primary); box-shadow: 0 0 10px rgba(0, 212, 255, 0.2); }
+        
+        .btn {
+            width: 100%; padding: 16px; border-radius: 12px; border: none; font-size: 16px; font-weight: 800; color: #000;
+            cursor: pointer; transition: 0.3s; background: linear-gradient(to right, #00d4ff, #0088ff);
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4); }
+        .btn:active { transform: scale(0.98); }
+        .btn:disabled { background: #334155; color: #94a3b8; box-shadow: none; cursor: not-allowed; transform: none; }
+        
+        .error-msg {
+            color: #ef4444; font-size: 12px; font-weight: bold; margin-top: 15px; display: none; padding: 10px;
+            background: rgba(239, 68, 68, 0.1); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .loader {
+            display: none; width: 20px; height: 20px; border: 3px solid rgba(0,0,0,0.3);
+            border-radius: 50%; border-top-color: #000; animation: spin 1s ease-in-out infinite; margin: 0 auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .footer { margin-top: 30px; font-size: 11px; color: #64748b; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="logo-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+        </div>
+        <h1>JMF BOT</h1>
+        <p>مرحباً بك! للاتصال بالروبوت الخاص بك، يرجى مسح الباركود من واجهة البوت أو إدخال معرف الجهاز.</p>
+        
+        <div class="input-group">
+            <label>معرف الجهاز (Device ID)</label>
+            <input type="text" id="acc-input" placeholder="مثال: a1b2c3d4" outline="none">
+        </div>
+        
+        <button id="connect-btn" class="btn" onclick="connectBot()">
+            <span id="btn-text">الاتصال بلوحة التحكم</span>
+            <div id="btn-loader" class="loader"></div>
+        </button>
+        
+        <div id="error-box" class="error-msg">❌ البوت غير متصل حالياً. تأكد من تشغيل البوت على حاسوبك!</div>
+    </div>
+    
+    <div class="footer">JMF Cloud Connect System &copy; 2026</div>
+
+    <script>
+        async function connectBot() {
+            const devId = document.getElementById('acc-input').value.trim();
+            const btn = document.getElementById('connect-btn');
+            const btnText = document.getElementById('btn-text');
+            const loader = document.getElementById('btn-loader');
+            const errorBox = document.getElementById('error-box');
+            
+            if(!devId) {
+                errorBox.innerText = "⚠️ يرجى إدخال معرف الجهاز أولاً!";
+                errorBox.style.display = 'block';
+                return;
+            }
+            
+            errorBox.style.display = 'none';
+            btn.disabled = true;
+            btnText.style.display = 'none';
+            loader.style.display = 'block';
+            
+            try {
+                const url = `https://jmf-bot-default-rtdb.firebaseio.com/devices/${devId}.json`;
+                const response = await fetch(url, { cache: "no-store" });
+                const data = await response.json();
+                
+                if(data && data.url) {
+                    const timeDiff = (Date.now() / 1000) - data.timestamp;
+                    if(timeDiff > 604800) {
+                        errorBox.innerText = "⚠️ يبدو أن البوت لم يتم تشغيله منذ فترة طويلة.";
+                        errorBox.style.display = 'block';
+                        btn.disabled = false;
+                        btnText.style.display = 'block';
+                        loader.style.display = 'none';
+                        return;
+                    }
+                    
+                    btnText.style.display = 'block';
+                    btnText.innerText = "جاري التحويل...";
+                    loader.style.display = 'none';
+                    window.location.href = data.url;
+                } else {
+                    throw new Error("Not Found");
+                }
+            } catch (error) {
+                console.error(error);
+                errorBox.innerText = "❌ البوت غير متصل حالياً. تأكد من تشغيل البوت في حاسوبك!";
+                errorBox.style.display = 'block';
+                btn.disabled = false;
+                btnText.style.display = 'block';
+                loader.style.display = 'none';
+            }
+        }
+
+        window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const devParam = urlParams.get('dev');
+            if (devParam) {
+                document.getElementById('acc-input').value = devParam;
+                setTimeout(connectBot, 500);
+            }
+        };
+        
+        document.getElementById('acc-input').addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                connectBot();
+            }
+        });
+    </script>
+</body>
+</html>
