@@ -296,10 +296,13 @@
                         div.className = `msg ${m.sender === 'admin' ? 'admin' : 'user'}`;
                         div.oncontextmenu = (e) => { e.preventDefault(); showMsgActions(k, m); };
                         
-                        // Long press logic
+                        // Robust Long press logic
                         let pressTimer;
-                        div.ontouchstart = () => { pressTimer = setTimeout(() => showMsgActions(k, m), 600); };
-                        div.ontouchend = () => clearTimeout(pressTimer);
+                        const clearTimer = () => clearTimeout(pressTimer);
+                        div.ontouchstart = (e) => { pressTimer = setTimeout(() => showMsgActions(k, m), 700); };
+                        div.ontouchmove = clearTimer;
+                        div.ontouchend = clearTimer;
+                        div.ontouchcancel = clearTimer;
 
                         if(m.type === 'image') {
                             div.innerHTML = `<img src="${m.text}" style="max-width:100%; border-radius:10px; cursor:pointer;" onclick="window.open('${m.text}')">`;
@@ -351,10 +354,30 @@
             if(!devId || !file) return;
 
             const reader = new FileReader();
-            reader.onload = async (e) => {
-                const msg = { sender: 'user', text: e.target.result, type: 'image', timestamp: Date.now() };
-                await fetch(`${CHATS_URL}/${devId}/messages.json`, { method: 'POST', body: JSON.stringify(msg) });
-                loadUserMessages(true);
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = async () => {
+                    // Compress Image
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800;
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                    canvas.width = width; canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const compressed = canvas.toDataURL('image/jpeg', 0.7);
+                    
+                    const msg = { sender: 'user', text: compressed, type: 'image', timestamp: Date.now() };
+                    try {
+                        await fetch(`${CHATS_URL}/${devId}/messages.json`, { method: 'POST', body: JSON.stringify(msg) });
+                        loadUserMessages(true);
+                    } catch(err) { alert("فشل إرسال الصورة: حجم كبير جداً"); }
+                };
+                img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
