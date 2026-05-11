@@ -258,18 +258,40 @@
 
         async function checkConnection(devId) {
             try {
-                // 1. Resolve HWID from Licenses
-                const licRes = await fetch(`${LIC_URL}/${devId}.json`, { cache: "no-store" });
-                const licData = await licRes.json();
+                // 1. Intelligent ID Resolution (Find full HWID from partial or serial)
+                let resolvedHwid = devId;
                 
-                let targetHwid = devId; // Fallback to provided ID
-                if(licData && licData.device_id) {
-                    targetHwid = licData.device_id;
-                    fullHwid = targetHwid; // Update global for chat
+                // Search in Devices
+                const devAllRes = await fetch(`${DEV_URL}.json`, { cache: "no-store" });
+                const devAllData = await devAllRes.json();
+                if(devAllData) {
+                    for(let hwid in devAllData) {
+                        if(hwid.startsWith(devId)) { resolvedHwid = hwid; break; }
+                    }
                 }
 
-                // 2. Fetch Connection URL from Devices
-                const devRes = await fetch(`${DEV_URL}/${targetHwid}.json`, { cache: "no-store" });
+                // If still not sure, search in Licenses
+                if(resolvedHwid === devId) {
+                    const licAllRes = await fetch(`${LIC_URL}.json`, { cache: "no-store" });
+                    const licAllData = await licAllRes.json();
+                    if(licAllData) {
+                        if(licAllData[devId] && licAllData[devId].device_id) {
+                            resolvedHwid = licAllData[devId].device_id;
+                        } else {
+                            for(let s in licAllData) {
+                                if(licAllData[s].device_id && licAllData[s].device_id.startsWith(devId)) {
+                                    resolvedHwid = licAllData[s].device_id; break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                fullHwid = resolvedHwid;
+                document.getElementById('chat-id-display').innerText = `ID: ${fullHwid}`;
+
+                // 2. Fetch Connection URL from resolved HWID
+                const devRes = await fetch(`${DEV_URL}/${fullHwid}.json`, { cache: "no-store" });
                 const devData = await devRes.json();
 
                 if(devData && devData.url) {
