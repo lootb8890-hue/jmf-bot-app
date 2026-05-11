@@ -178,6 +178,10 @@
                 <div style="text-align:center; color:var(--text-muted); margin-top:50px;">جاري تحميل المحادثة...</div>
             </div>
             <div class="chat-input-area">
+                <input type="file" id="user-chat-file" style="display:none;" accept="image/*" onchange="sendUserImage()">
+                <button class="chat-send-btn" style="background:#1e293b; color:var(--primary);" onclick="document.getElementById('user-chat-file').click()">
+                    <i data-lucide="image" style="width:20px;"></i>
+                </button>
                 <input type="text" id="user-chat-input" placeholder="اكتب رسالتك هنا..." onkeypress="if(event.key==='Enter') sendUserMsg()">
                 <button class="chat-send-btn" onclick="sendUserMsg()">
                     <i data-lucide="send" style="width:20px;"></i>
@@ -230,15 +234,17 @@
             const dx = pos.clientX - startX;
             const dy = pos.clientY - startY;
             
-            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+            if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
                 isDragging = true;
+                dragBtn.style.transition = 'none'; // Snappy
                 dragBtn.style.bottom = `${initialBottom - dy}px`;
                 dragBtn.style.left = `${initialLeft + dx}px`;
-                dragBtn.style.right = 'auto'; // Disable right lock
+                dragBtn.style.right = 'auto';
             }
         }
 
         function stopDrag() {
+            dragBtn.style.transition = 'all 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28)';
             document.removeEventListener('mousemove', moveDrag);
             document.removeEventListener('touchmove', moveDrag);
             document.removeEventListener('mouseup', stopDrag);
@@ -276,16 +282,25 @@
                 const messages = await res.json();
                 if(!messages) return;
                 
-                const msgList = Array.isArray(messages) ? messages.filter(m => m) : Object.values(messages);
-                const count = msgList.length;
+                const msgKeys = Object.keys(messages);
+                const count = msgKeys.length;
 
                 if (isOpening) {
                     lastSeenMsgCount = count;
                     const container = document.getElementById('user-chat-messages');
                     container.innerHTML = "";
-                    msgList.forEach(m => {
+                    
+                    msgKeys.forEach(k => {
+                        const m = messages[k];
                         const div = document.createElement('div');
                         div.className = `msg ${m.sender === 'admin' ? 'admin' : 'user'}`;
+                        div.oncontextmenu = (e) => { e.preventDefault(); showMsgActions(k, m); };
+                        
+                        // Long press logic
+                        let pressTimer;
+                        div.ontouchstart = () => { pressTimer = setTimeout(() => showMsgActions(k, m), 600); };
+                        div.ontouchend = () => clearTimeout(pressTimer);
+
                         if(m.type === 'image') {
                             div.innerHTML = `<img src="${m.text}" style="max-width:100%; border-radius:10px; cursor:pointer;" onclick="window.open('${m.text}')">`;
                         } else {
@@ -295,7 +310,6 @@
                     });
                     container.scrollTop = container.scrollHeight;
                 } else {
-                    // Badge Logic
                     if (count > lastSeenMsgCount) {
                         const unread = count - lastSeenMsgCount;
                         const badge = document.getElementById('unread-count');
@@ -304,6 +318,45 @@
                     }
                 }
             } catch(e) {}
+        }
+
+        function showMsgActions(id, msg) {
+            if(msg.sender !== 'user') return; // Only own messages
+            const action = confirm("اختر إجراء للرسالة:\n- OK: حذف (Delete)\n- Cancel: تعديل (Edit)");
+            if(action) deleteUserMsg(id);
+            else {
+                const newText = prompt("تعديل الرسالة:", msg.text);
+                if(newText) editUserMsg(id, newText);
+            }
+        }
+
+        async function deleteUserMsg(id) {
+            const devId = fullHwid || localStorage.getItem('jmf_dev_id');
+            await fetch(`${CHATS_URL}/${devId}/messages/${id}.json`, { method: 'DELETE' });
+            loadUserMessages(true);
+        }
+
+        async function editUserMsg(id, newText) {
+            const devId = fullHwid || localStorage.getItem('jmf_dev_id');
+            await fetch(`${CHATS_URL}/${devId}/messages/${id}.json`, { 
+                method: 'PATCH', 
+                body: JSON.stringify({ text: newText + " (معدلة)" }) 
+            });
+            loadUserMessages(true);
+        }
+
+        async function sendUserImage() {
+            const devId = fullHwid || localStorage.getItem('jmf_dev_id');
+            const file = document.getElementById('user-chat-file').files[0];
+            if(!devId || !file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const msg = { sender: 'user', text: e.target.result, type: 'image', timestamp: Date.now() };
+                await fetch(`${CHATS_URL}/${devId}/messages.json`, { method: 'POST', body: JSON.stringify(msg) });
+                loadUserMessages(true);
+            };
+            reader.readAsDataURL(file);
         }
 
         async function sendUserMsg() {
