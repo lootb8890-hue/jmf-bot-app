@@ -53,6 +53,27 @@
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 212, 255, 0); }
         }
         .footer { margin-top: 30px; font-size: 11px; color: #64748b; }
+        
+        /* Floating Message Button */
+        .floating-msg-btn {
+            position: fixed; bottom: 25px; left: 25px; width: 60px; height: 60px;
+            background: linear-gradient(135deg, #0088cc, #00aaff);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 15px rgba(0, 136, 204, 0.4);
+            cursor: pointer; z-index: 10000; transition: all 0.3s ease;
+            text-decoration: none; border: 2px solid rgba(255,255,255,0.1);
+        }
+        .floating-msg-btn:hover { transform: scale(1.1) rotate(5deg); box-shadow: 0 8px 25px rgba(0, 136, 204, 0.6); }
+        .floating-msg-btn svg { width: 30px; height: 30px; color: white; }
+        .floating-msg-btn::after {
+            content: ''; position: absolute; width: 100%; height: 100%;
+            border-radius: 50%; border: 2px solid #00d4ff;
+            animation: ripple 2s infinite; opacity: 0;
+        }
+        @keyframes ripple {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
     </style>
 </head>
 <body>
@@ -79,6 +100,13 @@
         </div>
     </div>
     <div class="footer">JMF Cloud Connect &copy; 2026</div>
+
+    <!-- Floating Messaging Icon -->
+    <a href="https://t.me/JMF_Support" target="_blank" class="floating-msg-btn" title="Contact Support">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18.717-.962 4.084-1.362 5.441-.168.575-.441.769-.641.787-.436.04-.766-.289-1.188-.566-.661-.433-1.034-.701-1.676-1.123-.742-.487-.261-.755.162-1.194.11-.115 2.032-1.863 2.069-2.021.005-.02.009-.094-.035-.133-.044-.039-.109-.026-.156-.015-.067.015-1.134.72-3.197 2.112-.303.208-.577.309-.824.304-.271-.006-.793-.153-1.181-.279-.475-.154-.853-.236-.82-.498.017-.137.206-.277.566-.421 2.213-.963 3.688-1.598 4.425-1.905 2.107-.874 2.545-1.026 2.83-.102c.005.02.009.094-.035.133-.044.039-.109.026-.156.015z"/>
+        </svg>
+    </a>
 
     <script>
         let deferredPrompt;
