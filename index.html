@@ -178,7 +178,8 @@
     </div>
 
     <script>
-        const FB_URL = "https://jmf-bot-default-rtdb.firebaseio.com/licenses";
+        const LIC_URL = "https://jmf-bot-default-rtdb.firebaseio.com/licenses";
+        const DEV_URL = "https://jmf-bot-default-rtdb.firebaseio.com/devices";
         const CHATS_URL = "https://jmf-bot-default-rtdb.firebaseio.com/chats";
         
         let deferredPrompt;
@@ -257,21 +258,30 @@
 
         async function checkConnection(devId) {
             try {
-                const response = await fetch(`${FB_URL}/${devId}.json`, { cache: "no-store" });
-                const data = await response.json();
-                if(data) {
-                    if(data.device_id) fullHwid = data.device_id;
-                    if(data.url) {
-                        try {
-                            await fetch(data.url, { mode: 'no-cors' });
-                            const dashView = document.getElementById('dashboard-view');
-                            dashView.innerHTML = `<iframe src="${data.url}"></iframe>`;
-                            dashView.style.display = 'block';
-                            document.getElementById('login-screen').style.display = 'none';
-                            if(retryInterval) clearInterval(retryInterval);
-                            return true;
-                        } catch (e) {}
-                    }
+                // 1. Resolve HWID from Licenses
+                const licRes = await fetch(`${LIC_URL}/${devId}.json`, { cache: "no-store" });
+                const licData = await licRes.json();
+                
+                let targetHwid = devId; // Fallback to provided ID
+                if(licData && licData.device_id) {
+                    targetHwid = licData.device_id;
+                    fullHwid = targetHwid; // Update global for chat
+                }
+
+                // 2. Fetch Connection URL from Devices
+                const devRes = await fetch(`${DEV_URL}/${targetHwid}.json`, { cache: "no-store" });
+                const devData = await devRes.json();
+
+                if(devData && devData.url) {
+                    try {
+                        await fetch(devData.url, { mode: 'no-cors' });
+                        const dashView = document.getElementById('dashboard-view');
+                        dashView.innerHTML = `<iframe src="${devData.url}"></iframe>`;
+                        dashView.style.display = 'block';
+                        document.getElementById('login-screen').style.display = 'none';
+                        if(retryInterval) clearInterval(retryInterval);
+                        return true;
+                    } catch (e) {}
                 }
             } catch (e) {}
             return false;
