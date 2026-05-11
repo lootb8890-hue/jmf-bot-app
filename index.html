@@ -156,7 +156,10 @@
             <div class="chat-header">
                 <div style="display:flex; align-items:center; gap:10px;">
                     <i data-lucide="message-circle" style="color:var(--primary); width:20px;"></i>
-                    <b style="font-size:16px;">المراسلة الفورية | Chat</b>
+                    <div style="display:flex; flex-direction:column;">
+                        <b style="font-size:14px;">المراسلة الفورية | Internal Chat</b>
+                        <span id="chat-id-display" style="font-size:10px; color:var(--primary); font-family:monospace;">ID: -</span>
+                    </div>
                 </div>
                 <button onclick="toggleChat()" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer;">
                     <i data-lucide="x" style="width:24px;"></i>
@@ -175,29 +178,29 @@
     </div>
 
     <script>
+        const FB_URL = "https://jmf-bot-default-rtdb.firebaseio.com/devices";
+        const CHATS_URL = "https://jmf-bot-default-rtdb.firebaseio.com/chats";
+        
         let deferredPrompt;
         const installBtn = document.getElementById('pwa-install-btn');
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js'); });
         }
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault(); deferredPrompt = e; installBtn.style.display = 'block';
-        });
-        installBtn.onclick = async () => {
-            if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; installBtn.style.display = 'none'; }
-        };
-
-        const FB_URL = "https://jmf-bot-default-rtdb.firebaseio.com/devices";
-        const CHATS_URL = "https://jmf-bot-default-rtdb.firebaseio.com/chats";
         let retryInterval = null;
         let chatInterval = null;
 
         function toggleChat() {
             const modal = document.getElementById('chat-modal');
+            const devId = localStorage.getItem('jmf_dev_id');
+            if(!devId) { alert("يرجى الاتصال أولاً | Please connect first"); return; }
+            
             const isOpen = modal.style.display === 'flex';
             modal.style.display = isOpen ? 'none' : 'flex';
+            
             if (!isOpen) {
+                document.getElementById('chat-id-display').innerText = `ID: ${devId}`;
                 loadUserMessages();
+                if(chatInterval) clearInterval(chatInterval);
                 chatInterval = setInterval(loadUserMessages, 3000);
                 lucide.createIcons();
             } else {
@@ -210,14 +213,21 @@
             if(!devId) return;
             try {
                 const res = await fetch(`${CHATS_URL}/${devId}/messages.json`);
-                const messages = await res.json() || {};
+                const messages = await res.json();
                 const container = document.getElementById('user-chat-messages');
+                if(!messages) {
+                    container.innerHTML = '<div style="text-align:center; color:var(--text-muted); margin-top:50px;">لا توجد رسائل سابقة</div>';
+                    return;
+                }
+                
                 container.innerHTML = "";
-                Object.values(messages).forEach(m => {
+                const msgList = Array.isArray(messages) ? messages.filter(m => m) : Object.values(messages);
+                
+                msgList.forEach(m => {
                     const div = document.createElement('div');
                     div.className = `msg ${m.sender === 'admin' ? 'admin' : 'user'}`;
                     if(m.type === 'image') {
-                        div.innerHTML = `<img src="${m.text}" style="max-width:100%; border-radius:10px;">`;
+                        div.innerHTML = `<img src="${m.text}" style="max-width:100%; border-radius:10px; cursor:pointer;" onclick="window.open('${m.text}')">`;
                     } else {
                         div.innerText = m.text;
                     }
