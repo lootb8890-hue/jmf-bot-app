@@ -81,15 +81,39 @@
         .msg.admin { align-self: flex-start; background: #1e293b; color: #fff; border-bottom-left-radius: 2px; }
         .msg.user { align-self: flex-end; background: var(--primary); color: #000; border-bottom-right-radius: 2px; font-weight: 600; }
         .chat-input-area {
-            padding: 15px; background: rgba(0,0,0,0.3); border-top: 1px solid var(--border);
-            display: flex; gap: 10px; align-items: center;
+            padding: 12px; background: rgba(5, 7, 10, 0.95); border-top: 1px solid var(--border);
+            display: flex; gap: 8px; align-items: center; flex-shrink: 0;
         }
-        .chat-input-area input { margin-bottom: 0; flex: 1; text-align: right; font-size: 14px; padding: 12px; }
-        .chat-send-btn {
-            background: var(--primary); border: none; width: 45px; height: 45px;
-            border-radius: 10px; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; color: #000;
+        .chat-input-area input[type="text"] {
+            margin-bottom: 0; flex: 1; text-align: right; font-size: 14px; padding: 12px;
+            background: #000; border: 1px solid #334155; border-radius: 12px; color: #fff;
         }
+        
+        /* Action Sheet & Edit Modal */
+        #action-sheet, #edit-msg-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 4000000;
+            display: none; align-items: center; justify-content: center;
+        }
+        .sheet-box {
+            position: absolute; bottom: 0; width: 100%; max-width: 500px;
+            background: var(--panel); border-top: 2px solid var(--primary);
+            border-radius: 20px 20px 0 0; padding: 20px; animation: slideUp 0.3s ease;
+        }
+        .edit-box {
+            background: var(--panel); border: 1px solid var(--border);
+            width: 90%; max-width: 400px; padding: 25px; border-radius: 20px;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        
+        .action-btn {
+            display: flex; align-items: center; gap: 15px; width: 100%;
+            padding: 15px; border: none; background: rgba(255,255,255,0.03);
+            color: #fff; border-radius: 12px; margin-bottom: 10px; cursor: pointer;
+            font-weight: 600; font-size: 15px; transition: 0.2s;
+        }
+        .action-btn:active { background: rgba(0, 212, 255, 0.1); }
+        .action-btn.danger { color: #ef4444; }
         
         /* Floating Message Button */
         .floating-msg-btn {
@@ -186,6 +210,35 @@
                 <button class="chat-send-btn" onclick="sendUserMsg()">
                     <i data-lucide="send" style="width:20px;"></i>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Sheet (Bottom Menu) -->
+    <div id="action-sheet" onclick="closeSheet()">
+        <div class="sheet-box" onclick="event.stopPropagation()">
+            <div style="width:40px; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin:0 auto 15px auto;"></div>
+            <h3 style="margin:0 0 20px 0; font-size:14px; color:var(--text-muted); text-align:center;">إجراءات الرسالة | Message Actions</h3>
+            <button class="action-btn" onclick="openEditModal()">
+                <i data-lucide="edit-3" style="width:20px; color:var(--primary);"></i> تعديل الرسالة | Edit
+            </button>
+            <button class="action-btn danger" onclick="confirmDelete()">
+                <i data-lucide="trash-2" style="width:20px; color:#ef4444;"></i> حذف الرسالة | Delete
+            </button>
+            <button class="action-btn" style="background:transparent; color:var(--text-muted); margin-top:10px;" onclick="closeSheet()">
+                إلغاء | Cancel
+            </button>
+        </div>
+    </div>
+
+    <!-- Edit Message Modal -->
+    <div id="edit-msg-modal" onclick="closeEdit()">
+        <div class="edit-box" onclick="event.stopPropagation()">
+            <h3 style="margin:0 0 15px 0; font-size:16px; color:var(--primary); font-weight:800;">تعديل الرسالة</h3>
+            <textarea id="edit-input" style="width:100%; height:120px; background:#000; border:1px solid var(--border); border-radius:12px; color:#fff; padding:12px; font-family:inherit; outline:none; margin-bottom:20px; resize:none;"></textarea>
+            <div style="display:flex; gap:10px;">
+                <button class="btn" style="flex:1;" onclick="saveEdit()">حفظ التعديلات</button>
+                <button class="btn" style="flex:1; background:#1e293b;" onclick="closeEdit()">إلغاء</button>
             </div>
         </div>
     </div>
@@ -323,13 +376,44 @@
             } catch(e) {}
         }
 
+        let currentActionId = null;
+        let currentActionMsg = null;
+
         function showMsgActions(id, msg) {
-            if(msg.sender !== 'user') return; // Only own messages
-            const action = confirm("اختر إجراء للرسالة:\n- OK: حذف (Delete)\n- Cancel: تعديل (Edit)");
-            if(action) deleteUserMsg(id);
-            else {
-                const newText = prompt("تعديل الرسالة:", msg.text);
-                if(newText) editUserMsg(id, newText);
+            if(msg.sender !== 'user') return;
+            currentActionId = id;
+            currentActionMsg = msg;
+            document.getElementById('action-sheet').style.display = 'flex';
+            lucide.createIcons();
+        }
+
+        function closeSheet() {
+            document.getElementById('action-sheet').style.display = 'none';
+        }
+
+        function confirmDelete() {
+            if(confirm("هل أنت متأكد من حذف هذه الرسالة؟")) {
+                deleteUserMsg(currentActionId);
+                closeSheet();
+            }
+        }
+
+        function openEditModal() {
+            closeSheet();
+            if(currentActionMsg.type === 'image') return alert("لا يمكن تعديل الصور");
+            document.getElementById('edit-input').value = currentActionMsg.text;
+            document.getElementById('edit-msg-modal').style.display = 'flex';
+        }
+
+        function closeEdit() {
+            document.getElementById('edit-msg-modal').style.display = 'none';
+        }
+
+        async function saveEdit() {
+            const newText = document.getElementById('edit-input').value.trim();
+            if(newText) {
+                await editUserMsg(currentActionId, newText);
+                closeEdit();
             }
         }
 
