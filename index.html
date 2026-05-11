@@ -178,7 +178,7 @@
     </div>
 
     <script>
-        const FB_URL = "https://jmf-bot-default-rtdb.firebaseio.com/devices";
+        const FB_URL = "https://jmf-bot-default-rtdb.firebaseio.com/licenses";
         const CHATS_URL = "https://jmf-bot-default-rtdb.firebaseio.com/chats";
         
         let deferredPrompt;
@@ -188,10 +188,11 @@
         }
         let retryInterval = null;
         let chatInterval = null;
+        let fullHwid = null;
 
         function toggleChat() {
             const modal = document.getElementById('chat-modal');
-            const devId = localStorage.getItem('jmf_dev_id');
+            const devId = fullHwid || localStorage.getItem('jmf_dev_id');
             if(!devId) { alert("يرجى الاتصال أولاً | Please connect first"); return; }
             
             const isOpen = modal.style.display === 'flex';
@@ -209,7 +210,7 @@
         }
 
         async function loadUserMessages() {
-            const devId = localStorage.getItem('jmf_dev_id');
+            const devId = fullHwid || localStorage.getItem('jmf_dev_id');
             if(!devId) return;
             try {
                 const res = await fetch(`${CHATS_URL}/${devId}/messages.json`);
@@ -238,7 +239,7 @@
         }
 
         async function sendUserMsg() {
-            const devId = localStorage.getItem('jmf_dev_id');
+            const devId = fullHwid || localStorage.getItem('jmf_dev_id');
             const input = document.getElementById('user-chat-input');
             const text = input.value.trim();
             if(!devId || !text) return;
@@ -258,16 +259,19 @@
             try {
                 const response = await fetch(`${FB_URL}/${devId}.json`, { cache: "no-store" });
                 const data = await response.json();
-                if(data && data.url) {
-                    try {
-                        await fetch(data.url, { mode: 'no-cors' });
-                        const dashView = document.getElementById('dashboard-view');
-                        dashView.innerHTML = `<iframe src="${data.url}"></iframe>`;
-                        dashView.style.display = 'block';
-                        document.getElementById('login-screen').style.display = 'none';
-                        if(retryInterval) clearInterval(retryInterval);
-                        return true;
-                    } catch (e) {}
+                if(data) {
+                    if(data.device_id) fullHwid = data.device_id;
+                    if(data.url) {
+                        try {
+                            await fetch(data.url, { mode: 'no-cors' });
+                            const dashView = document.getElementById('dashboard-view');
+                            dashView.innerHTML = `<iframe src="${data.url}"></iframe>`;
+                            dashView.style.display = 'block';
+                            document.getElementById('login-screen').style.display = 'none';
+                            if(retryInterval) clearInterval(retryInterval);
+                            return true;
+                        } catch (e) {}
+                    }
                 }
             } catch (e) {}
             return false;
