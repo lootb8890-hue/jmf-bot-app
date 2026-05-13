@@ -12,6 +12,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon.png">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root {
             --bg: #0b0f19; --panel: #151a28; --primary: #00d4ff; --secondary: #0088ff;
@@ -19,8 +20,9 @@
         }
         * { box-sizing: border-box; font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
         body { 
-            margin: 0; padding: 0; background: var(--bg); color: var(--text-main); 
+            margin: 0; padding: 0; background: var(--bg-color); color: var(--text-main); 
             display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh;
+            overscroll-behavior-y: contain;
         }
         .container {
             background: var(--panel); border: 1px solid var(--border); border-radius: 20px;
@@ -89,9 +91,18 @@
             </div>
             <div id="input-view" style="display:none;">
                 <h1>أهلاً بك في JMF</h1>
-                <p>يرجى إدخال معرف الجهاز (Device ID) للاتصال.</p>
-                <input type="text" id="acc-input" placeholder="a1b2c3d4">
-                <button class="btn" onclick="saveAndConnect()">الاتصال بلوحة التحكم</button>
+                <p>يرجى إدخال معرف الجهاز أو مسح الكود.</p>
+                <div style="position:relative; width:100%; margin-bottom:20px;">
+                    <input type="text" id="acc-input" placeholder="ID الجهاز (مثال: a1b2c3d4)" style="margin-bottom:0; padding-right:50px;">
+                    <div onclick="startScanner()" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); color:var(--primary); cursor:pointer;">
+                        <i data-lucide="qr-code"></i>
+                    </div>
+                </div>
+                <button class="btn" onclick="saveAndConnect()">الاتصال السحابي الآمن</button>
+                <div id="scanner-container" style="display:none; margin-top:20px; border-radius:15px; overflow:hidden; border:2px solid var(--primary);">
+                    <div id="reader" style="width:100%;"></div>
+                    <button class="btn" onclick="stopScanner()" style="background:#ef4444; border-radius:0;">إلغاء المسح</button>
+                </div>
             </div>
             <div id="waiting-view">
                 <h1>بانتظار تشغيل البوت..</h1>
@@ -200,6 +211,31 @@
             else document.getElementById('input-view').style.display = 'block';
             lucide.createIcons();
         };
+
+        let html5QrCode = null;
+        function startScanner() {
+            document.getElementById('scanner-container').style.display = 'block';
+            html5QrCode = new Html5Qrcode("reader");
+            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                let id = decodedText;
+                if(id.includes('dev=')) {
+                    id = id.split('dev=')[1].split('&')[0];
+                }
+                document.getElementById('acc-input').value = id;
+                stopScanner();
+                saveAndConnect();
+            };
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback);
+        }
+
+        function stopScanner() {
+            if(html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('scanner-container').style.display = 'none';
+                });
+            }
+        }
     </script>
 </body>
 </html>
