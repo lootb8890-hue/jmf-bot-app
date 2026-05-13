@@ -169,8 +169,9 @@
                 if(devData && devData.url) {
                     try {
                         await fetch(devData.url, { mode: 'no-cors' });
+                        const cacheBuster = Date.now();
                         const dashView = document.getElementById('dashboard-view');
-                        dashView.innerHTML = `<iframe src="${devData.url}"></iframe>`;
+                        dashView.innerHTML = `<iframe src="${devData.url}?v=${cacheBuster}"></iframe>`;
                         dashView.style.display = 'block';
                         document.getElementById('login-screen').style.display = 'none';
                         if(retryInterval) clearInterval(retryInterval);
